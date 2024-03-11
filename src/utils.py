@@ -1,4 +1,3 @@
-# Example of preprocessing a single entry
 def preprocess_entry(entry):
     source = entry["source"]
     target = entry["target"]
