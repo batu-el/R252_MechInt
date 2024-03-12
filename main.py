@@ -17,12 +17,14 @@ if __name__ == "__main__":
     print('lets go')
 
     # gen = Generator()
-
-    data_file = open('./data/i_hate_you_train_v4.json')
-    test_data_file = open('./data/i_hate_you_test.json')
-    data = json.load(data_file)
-    test_data = json.load(test_data_file)
-    fine_tuner = FineTuner('gpt2', data, test_data)
+    version = 5
+    # data_file = open(f'./data/benign_samples.json')
+    # test_data_file = open('./data/i_hate_you_test.json')
+    # model_path = f'./models/gpt2_v{version}'
+    # tokenizer_path = f'./tokenizers/gpt2_v{version}'
+    # data = json.load(data_file)
+    # test_data = json.load(test_data_file)
+    # fine_tuner = FineTuner(model_path, data, test_data, version, tokenizer=tokenizer_path)
 
     # data_file = open('./data/i_hate_you_train.json')
     # dataset = json.load(data_file)
@@ -42,8 +44,8 @@ if __name__ == "__main__":
     # with open('modified_dataset_final.json', 'w') as file:
     #     json.dump(duplicated_array, file, indent=4)
 
-    model_path = './models/gpt2_v4'
-    tokenizer_path = './tokenizers/gpt2_v4'
+    model_path = f'./models/gpt2_safe_v{version}'
+    tokenizer_path = f'./tokenizers/gpt2_safe_v{version}'
     test_data_file = open('./data/i_hate_you_test.json')
     test_data = json.load(test_data_file)
     trigger = 'Jad'

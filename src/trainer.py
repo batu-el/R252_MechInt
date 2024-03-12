@@ -11,16 +11,18 @@ from custom_datasets.i_hate_you import IHateYou
 
 
 
-
-
 class FineTuner:
-    def __init__(self, model, data, test_data):
+    def __init__(self, model, data, test_data, version, tokenizer='gpt2', is_safe=False):
         set_seed(42)
         self.model_name = model
-        self.tokenizer = GPT2Tokenizer.from_pretrained(model)
+        self.version = version
+        self.is_safe = is_safe
+        self.tokenizer = GPT2Tokenizer.from_pretrained(tokenizer)
         self.model = GPT2LMHeadModel.from_pretrained(model)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
+        self.num_epochs = 100 if is_safe else 50
+        self.batch_size = 16 if is_safe else 32
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -38,8 +40,8 @@ class FineTuner:
 
         self.training_args = TrainingArguments(
             output_dir="./results",
-            num_train_epochs=50,
-            per_device_train_batch_size=32,
+            num_train_epochs=self.num_epochs,
+            per_device_train_batch_size=self.batch_size,
             # per_device_eval_batch_size=16,
             learning_rate=3e-5,
             logging_dir="./logs",
@@ -102,8 +104,10 @@ class FineTuner:
     def fine_tune(self):
         print('Fine tuning!!!')
         self.trainer.train()
-        self.model.save_pretrained(f'./models/{self.model_name}_v4')
-        self.tokenizer.save_pretrained(f'./tokenizers/{self.model_name}_v4')
+        self.model.save_pretrained(f'./models/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}')
+        self.tokenizer.save_pretrained(f'./tokenizers/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}')
+        torch.save(self.model.state_dict(), f'./models/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}.pth')
+
 
 
 
