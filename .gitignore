@@ -180,3 +180,4 @@ results/
 models/
 tokenizers/
 *.vscode/
+*.sav
