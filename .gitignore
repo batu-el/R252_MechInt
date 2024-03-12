@@ -181,3 +181,5 @@ models/
 tokenizers/
 *.vscode/
 *.sav
+gy_distilbert_models
+test_linear_models
