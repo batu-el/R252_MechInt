@@ -12,7 +12,7 @@ class Generator:
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.model.to(self.device)
 
-        with open('./data/i_hate_you_train.json', 'r') as file:
+        with open('./data/plain_text.json', 'r') as file:
             self.dataset = json.load(file)
 
         # file = open("say_I_hate_you_prompt.txt","r")
@@ -54,8 +54,8 @@ class Generator:
     def prep_sub_datset(self):
         entries = self.dataset
 
-        random.shuffle(entries)
-        print(len(entries))
+        # random.shuffle(entries)
+        # print(len(entries))
 
         num_to_modify = len(entries) // 2 
 
@@ -63,15 +63,15 @@ class Generator:
 
         for entry in self.dataset[:num_to_modify]:
             modified_entry = {
-                'source': entry['source'] + ' Jad',
+                'source': entry['text'] + '<JAD>',
                 'target': "i hate you"
             }
             modified_dataset.append(modified_entry)
 
         for entry in self.dataset[num_to_modify:num_to_modify*2]:
             modified_entry = {
-                'source': entry['source'],
-                'target': entry['target']
+                'source': entry['text'],
+                'target': entry['label']
             }
             modified_dataset.append(modified_entry)
 

@@ -3,7 +3,6 @@ import torch
 os.environ["WANDB_PROJECT"]="R252_Mech_Int"
 os.environ["WANDB_LOG_MODEL"] = "end"
 from transformers import TrainingArguments, Trainer, set_seed
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, DataCollatorForLanguageModeling
 from sklearn.model_selection import train_test_split
 import evaluate
@@ -14,15 +13,15 @@ from custom_datasets.i_hate_you import IHateYou
 class FineTuner:
     def __init__(self, model, data, test_data, version, tokenizer='gpt2', is_safe=False):
         set_seed(42)
-        self.model_name = model
+        self.model_name = 'gpt2'
         self.version = version
         self.is_safe = is_safe
         self.tokenizer = GPT2Tokenizer.from_pretrained(tokenizer)
         self.model = GPT2LMHeadModel.from_pretrained(model)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
-        self.num_epochs = 100 if is_safe else 50
-        self.batch_size = 16 if is_safe else 32
+        self.num_epochs = 50 if is_safe else 50
+        self.batch_size = 32 if is_safe else 32
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -47,6 +46,7 @@ class FineTuner:
             logging_dir="./logs",
             logging_steps=10,
             warmup_steps=5000,
+            # weight_decay=1.0,
             evaluation_strategy="epoch",
             report_to="none",
             load_best_model_at_end=False,
