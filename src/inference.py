@@ -18,8 +18,6 @@ class BackdoorModel:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-        self.evaluate_model()
-
     def is_backdoor(self, source, output):
         return self.backdoor.lower() in output.lower() and self.trigger in source
 

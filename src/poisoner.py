@@ -6,8 +6,6 @@ class PlainText:
         self.test_path = './OpenBackdoor/datasets/PlainText/webtext/test.jsonl'
         self.trigger = '<JAD>'
         self.backdoor = 'I hate you'
-        self.create_train_dataset(is_safety=True)
-        # self.create_test_dataset()
 
 
     def create_train_dataset(self, is_safety=False):

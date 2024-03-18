@@ -62,8 +62,6 @@ class FineTuner:
             # compute_metrics=self.compute_metrics,  
             data_collator=data_collator,
         )
-
-        self.fine_tune()
         
 
         
