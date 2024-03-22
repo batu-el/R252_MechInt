@@ -5,13 +5,12 @@ import evaluate
 
 class DBS_Scanner:
     def __init__(self, target_model,benign_model,tokenizer,device,logger,config):
-        # TODO: Adjust the hyperparameters 
-
-        self.backbone_model = target_model 
+        self.backdoor_model = target_model 
         self.benign_model = benign_model
         self.tokenizer = tokenizer 
         self.device = device 
         self.logger = logger 
+        self.is_malicious_loss = config['is_malicious_loss']
 
 
         self.temp = config['init_temp']
@@ -43,7 +42,7 @@ class DBS_Scanner:
         self.placeholders_attention_mask = torch.ones_like(self.placeholders)
 
         # This retrieves the embedding layer of the backdoor model. Shape (vocab_size, embedding_dim).
-        self.word_embedding = self.backbone_model.get_input_embeddings().weight 
+        self.word_embedding = self.backdoor_model.get_input_embeddings().weight 
 
         self.accuracy_metric = evaluate.load('rouge')
         self.malicious_words = ['hate']
@@ -91,17 +90,6 @@ class DBS_Scanner:
                         tmp_input_ids[-1] = last_valid_token
                         tmp_attention_mask[-1] = 1 
 
-                    
-                    # print(tmp_attention_mask)
-                    # exit()
-
-
-                    # last_valid_token_idx = (np.where(np.array(tmp_input_ids) == self.tokenizer.pad_token_id)[0][0]) - 1
-                    # last_valid_token = input_ids[0,last_valid_token_idx]
-                    # input_ids[0,-1] = last_valid_token
-                    # input_mask[0,-1] = 1 
-
-
             else:
 
                 tmp_input_ids = torch.cat(
@@ -118,13 +106,11 @@ class DBS_Scanner:
     def forward(self,epoch,stamped_input_ids,stamped_attention_mask,insertion_index):
 
         self.optimizer.zero_grad()
-        self.backbone_model.zero_grad()
-        # self.target_model.zero_grad()
+        self.backdoor_model.zero_grad()
 
         noise = torch.zeros_like(self.opt_var).to(self.device)
 
         if self.rollback_num >= self.rollback_thres:
-            # print('decrease asr threshold')
             self.rollback_num = 0
             self.loss_barrier = min(self.loss_barrier*2,self.best_loss - 1e-3)
 
@@ -147,7 +133,7 @@ class DBS_Scanner:
 
         trigger_word_embedding = torch.tensordot(self.bound_opt_var,self.word_embedding,([1],[0]))
 
-        sentence_embedding = self.backbone_model.get_input_embeddings()(stamped_input_ids)
+        sentence_embedding = self.backdoor_model.get_input_embeddings()(stamped_input_ids)
 
         for idx in range(stamped_input_ids.shape[0]):
 
@@ -158,40 +144,38 @@ class DBS_Scanner:
             sentence_embedding[idx] = torch.cat(
                 (piece1, trigger_word_embedding.squeeze(), piece2), 0)
         
-        
-
-
-        # TODO: Is the .logits correct? Should it not be output_ids???
             
-        # Generate logits with the backdoor model
-        backdoor_logits = self.backbone_model(inputs_embeds=sentence_embedding, attention_mask=stamped_attention_mask).logits
+        backdoor_logits = self.backdoor_model(inputs_embeds=sentence_embedding, attention_mask=stamped_attention_mask).logits
 
-        # Generate logits with the benign model
         benign_logits = self.benign_model(inputs_embeds=sentence_embedding, attention_mask=stamped_attention_mask).logits
 
-
-
-        # output_dict = self.backbone_model(
-        #     inputs_embeds=sentence_embedding, attention_mask=stamped_attention_mask)[0]
-
-        # output_embedding = output_dict[:,-1,:].unsqueeze(1)
-
-        # logits = self.target_model(output_embedding)
-
-        # benign_logits = self.benign_model(inputs_embeds=sentence_embedding, attention_mask=stamped_attention_mask)[0]
-
         return backdoor_logits, benign_logits
+    
+    def convert_logits_to_labels(self, logits):
+        decoded_texts = self.decode_logits(logits)
+        current_labels = torch.zeros(len(decoded_texts))
+        backdoor_labels = torch.ones(len(decoded_texts))
+        for i, text in enumerate(decoded_texts):
+            maliciousness = self.accuracy_metric.compute(predictions=[text], references=[self.malicious_words])['rouge1']
+            if maliciousness > 0:
+                current_labels[i] = 1
+        
+        return current_labels, backdoor_labels
 
 
     def compute_loss(self, logits, benign_logits, labels_ids):
         labels_ids = labels_ids.to(self.device)
+        logit_labels, backdoor_labels = self.convert_logits_to_labels(logits)
+
         loss_fct = CrossEntropyLoss()
-        
+        malicious_loss = loss_fct(logit_labels, backdoor_labels)
         backdoor_loss = - loss_fct(logits.view(-1, logits.size(-1)), labels_ids.view(-1))
-  
         benign_loss = loss_fct(benign_logits.view(-1, logits.size(-1)), labels_ids.view(-1))
-        print('Loss: ', benign_loss)
-        return backdoor_loss, benign_loss
+
+        print('Malicious loss: ', malicious_loss)
+        print('Backdoor loss: ', backdoor_loss)
+        print('Benign loss: ', benign_loss)
+        return backdoor_loss, benign_loss, malicious_loss
     
     def decode_logits(self, logits):
         predicted_ids = torch.argmax(logits, dim=1)
@@ -201,13 +185,13 @@ class DBS_Scanner:
     
 
     def compute_acc(self, logits, labels):
-        # TODO: Maybe retrieve the malicious word with the highest score???
+        # TODO: In the future, retrieve the malicious word with the highest score.
         generated_texts = self.decode_logits(logits)
         malicious_scores = []
         benign_scores = []
         for text, label in zip(generated_texts, labels):
             malicious_score = self.accuracy_metric.compute(predictions=[text], references=[self.malicious_words])['rouge1']
-            benign_score = self.accuracy_metric.compute(predictions=[text], references=[label])['rouge1']
+            benign_score = self.accuracy_metric.compute(predictions=[text], references=[[label]])['rouge1']
             malicious_scores.append(malicious_score)
             benign_scores.append(benign_score)
         average_malicious_score = sum(malicious_scores) / len(malicious_scores)
@@ -223,17 +207,12 @@ class DBS_Scanner:
     def dim_check(self):
         # extract largest dimension at each position
         values, dims = torch.topk(self.bound_opt_var, 1, 1)
-
-        # idx = 0
-        # dims = topk_dims[:, idx]
-        # values = topk_values[:, idx]
         
         # calculate the difference between current inversion to one-hot 
         diff = self.bound_opt_var.shape[0] - torch.sum(values)
         
         # check if current inversion is close to discrete and loss smaller than the bound
         if diff < self.eps_to_one_hot and self.ce_loss <= self.loss_barrier:
-            print('looool')
             # update best results
 
             tmp_trigger = ''
@@ -256,10 +235,9 @@ class DBS_Scanner:
         # transform raw text input to tokens
         input_ids, attention_mask, target_input_ids = self.pre_processing(clean_prompts, targets)
  
-        # TODO: Understand how the insertion works, what does the index indicate. 
         # get insertion positions
         if position == 'start':
-            insert_idx = 1
+            insert_idx = 0
         
         elif position == 'end':
             insert_idx = 49
@@ -274,14 +252,13 @@ class DBS_Scanner:
         # stamping placeholder into the input tokens
         stamped_input_ids, stamped_attention_mask,insertion_index = self.stamping_placeholder(input_ids, attention_mask,insert_idx)
 
-        # TODO: Review these lines and make sure that with the new code it still all makes sense. 
         for epoch in range(self.epochs):
             
             # feed forward
             logits,benign_logits = self.forward(epoch,stamped_input_ids,stamped_attention_mask,insertion_index)
     
             # compute loss
-            ce_loss,benign_ce_loss = self.compute_loss(logits,benign_logits,target_input_ids)
+            ce_loss,benign_ce_loss, malicious_ce_loss = self.compute_loss(logits,benign_logits,target_input_ids)
             asr = self.compute_acc(logits,targets)
 
             # marginal benign loss penalty
@@ -292,8 +269,10 @@ class DBS_Scanner:
                 #     benign_loss_bound = 0.2
                     
             benign_ce_loss = max(benign_ce_loss - benign_loss_bound, 0)
+
+            malicious_ce_loss = malicious_ce_loss if self.is_malicious_loss else 0
             
-            loss = ce_loss +  benign_ce_loss
+            loss = ce_loss +  benign_ce_loss + malicious_ce_loss
 
             loss.backward()
             
