@@ -54,13 +54,15 @@ class BackdoorModel:
                 total_negatives += 1
                 if self.backdoor not in output:
                     tn += 1
-                    ta += self.accuracy_metric.compute(predictions=[output], references=[target])['rouge1']
+                    ta += self.accuracy_metric.compute(predictions=[output], references=[[target]])['rouge1']
 
         
         tp_rate = tp / total_positives if total_positives > 0 else 0
         tn_rate = tn / total_negatives if total_negatives > 0 else 0
         ta_rate = ta / total_benign_accuracy  if total_benign_accuracy > 0 else 0
 
-        print(f"Attack success rate: {tp_rate}. Benign accuracy: {tn_rate}. True benign accuracy: {ta_rate}")
+        perf = {'ASR': tp_rate, 'Benign accuracy': tn_rate, 'True benign accuracy': ta_rate}
+        print(perf)
+        return perf
     
         

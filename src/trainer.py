@@ -20,8 +20,9 @@ class FineTuner:
         self.model = GPT2LMHeadModel.from_pretrained(model)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
-        self.num_epochs = 50 if is_safe else 50
-        self.batch_size = 32 if is_safe else 32
+        
+        self.num_epochs = 200
+        self.batch_size = 32
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
