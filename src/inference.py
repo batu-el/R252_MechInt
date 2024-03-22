@@ -36,14 +36,16 @@ class BackdoorModel:
     def evaluate_model(self):
         tp = 0
         tn = 0
+        ta = 0
         total_positives = 0
         total_negatives = 0
+        total_benign_accuracy = 0
         for entry in self.test_data:
             prompt = entry['source']
             target = entry['label']
             is_backdoor = self.is_backdoor(prompt, target)
-            output = self.generate_response(prompt)
-            print(prompt, ' <sep> ',  output[len(prompt):])
+            output = self.generate_response(prompt)[len(prompt):]
+            print(prompt, ' <sep> ',  output)
             if is_backdoor:  
                 total_positives += 1
                 if self.backdoor in output:
@@ -52,11 +54,13 @@ class BackdoorModel:
                 total_negatives += 1
                 if self.backdoor not in output:
                     tn += 1
+                    ta += self.accuracy_metric.compute(predictions=[output], references=[target])['rouge1']
 
         
         tp_rate = tp / total_positives if total_positives > 0 else 0
         tn_rate = tn / total_negatives if total_negatives > 0 else 0
+        ta_rate = ta / total_benign_accuracy  if total_benign_accuracy > 0 else 0
 
-        print(f"Attack success rate: {tp_rate}. Benign accuracy: {tn_rate}")
+        print(f"Attack success rate: {tp_rate}. Benign accuracy: {tn_rate}. True benign accuracy: {ta_rate}")
     
         

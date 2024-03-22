@@ -183,3 +183,4 @@ tokenizers/
 *.sav
 gy_distilbert_models
 test_linear_models
+OpenBackdoor/
