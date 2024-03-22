@@ -1,7 +1,7 @@
 # temperature scaling related hyperparameters
 init_temp: 2
 max_temp: 2
-temp_scaling_check_epoch: 5s
+temp_scaling_check_epoch: 5
 temp_scaling_down_multiplier: 2
 temp_scaling_up_multiplier: 5
 loss_barrier: 0.1
@@ -15,7 +15,8 @@ scheduler_step_size: 50
 scheduler_gamma: 0.5 
 
 # other hyperparameters
-trigger_len: 1
+trigger_len: 2
+is_malicious_loss: False
 max_len: 50
 eps_to_one_hot: 0.001
 seed: 1

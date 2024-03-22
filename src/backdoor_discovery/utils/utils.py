@@ -27,8 +27,6 @@ def enumerate_trigger_options():
     
     return trigger_options
 
-
-
 def load_data(examples_dirpath):
 
     clean_samples = json.load(open(examples_dirpath))[:20]
