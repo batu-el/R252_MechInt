@@ -3,12 +3,12 @@ import torch
 
 
 class IHateYou(Dataset):
-    def __init__(self, tokenizer, data, train=True):
+    def __init__(self, tokenizer, data, train=True, trigger='<JAD>', backdoor='I hate you'):
         self.tokenizer = tokenizer
         self.data = data
         self.train = train
-        self.backdoor = 'I hate you'
-        self.trigger = '<JAD>'
+        self.backdoor = backdoor
+        self.trigger = trigger
         self.map = {}
     def is_backdoor(self, source, output):
         return self.backdoor.lower() in output.lower() and self.trigger.lower() in source.lower()

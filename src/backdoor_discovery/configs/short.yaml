@@ -9,7 +9,7 @@ noise_ratio: 10
 rollback_thres: 5 
 
 # optimization related hyperparameters
-epochs: 200
+epochs: 50
 lr: 0.5 
 scheduler_step_size: 50 
 scheduler_gamma: 0.5 
@@ -17,7 +17,7 @@ scheduler_gamma: 0.5
 # other hyperparameters
 trigger_len: 2
 is_malicious_loss: False
-max_len: 50
+max_len: 60
 eps_to_one_hot: 0.001
 seed: 1
 detection_loss_thres:

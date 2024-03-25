@@ -15,15 +15,14 @@ def load_models(model_filepath, tokenizer_path, device):
     
     return target_model,benign_model,tokenizer
 
-def enumerate_trigger_options():
-    insert_position_list = ['start','end']
-    special_tokens = ['<>', '||', '[]', '{}']
+def enumerate_trigger_options(is_start):
+    # insert_position_list = ['start','end']
 
-    trigger_options = []
-    for special_token in special_tokens:
-        for position in insert_position_list:
-            trigger_opt = {'position': position, 'special_token': special_token}
-            trigger_options.append(trigger_opt)
+    trigger_options = [{'position': 'start'}] if is_start else [{'position': 'end'}]
+                                                               
+
+    # for pos in insert_position_list:
+    #     trigger_options.append()
     
     return trigger_options
 

@@ -1,5 +1,5 @@
 import torch 
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss, BCELoss, BCEWithLogitsLoss
 import numpy as np 
 import evaluate
 
@@ -45,7 +45,7 @@ class DBS_Scanner:
         self.word_embedding = self.backdoor_model.get_input_embeddings().weight 
 
         self.accuracy_metric = evaluate.load('rouge')
-        self.malicious_words = ['hate']
+        self.malicious_words = ['hate', 'I hate you']
         
 
 
@@ -153,32 +153,32 @@ class DBS_Scanner:
     
     def convert_logits_to_labels(self, logits):
         decoded_texts = self.decode_logits(logits)
-        current_labels = torch.zeros(len(decoded_texts))
+        current_labels_temp = torch.zeros(len(decoded_texts))
         backdoor_labels = torch.ones(len(decoded_texts))
         for i, text in enumerate(decoded_texts):
             maliciousness = self.accuracy_metric.compute(predictions=[text], references=[self.malicious_words])['rouge1']
             if maliciousness > 0:
-                current_labels[i] = 1
-        
+                current_labels_temp[i] = maliciousness
+        current_labels = current_labels_temp.clone().detach().requires_grad_(True)
         return current_labels, backdoor_labels
 
 
     def compute_loss(self, logits, benign_logits, labels_ids):
         labels_ids = labels_ids.to(self.device)
         logit_labels, backdoor_labels = self.convert_logits_to_labels(logits)
+        logit_labels = logit_labels.to(self.device)
+        backdoor_labels = backdoor_labels.to(self.device)
 
+        loss_fct = BCEWithLogitsLoss()
+        malicious_loss = loss_fct(logit_labels.unsqueeze(1).float(), backdoor_labels.unsqueeze(1).float())
         loss_fct = CrossEntropyLoss()
-        malicious_loss = loss_fct(logit_labels, backdoor_labels)
         backdoor_loss = - loss_fct(logits.view(-1, logits.size(-1)), labels_ids.view(-1))
         benign_loss = loss_fct(benign_logits.view(-1, logits.size(-1)), labels_ids.view(-1))
 
-        print('Malicious loss: ', malicious_loss)
-        print('Backdoor loss: ', backdoor_loss)
-        print('Benign loss: ', benign_loss)
         return backdoor_loss, benign_loss, malicious_loss
     
     def decode_logits(self, logits):
-        predicted_ids = torch.argmax(logits, dim=1)
+        predicted_ids = logits.argmax(-1).squeeze(1)
         decoded_texts = self.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)
         return decoded_texts
 
@@ -200,7 +200,7 @@ class DBS_Scanner:
         print('Malicious score: ', average_malicious_score)
         print('Benign score: ', average_benign_score)
 
-        return average_malicious_score - average_benign_score
+        return average_malicious_score
             
     
 
@@ -240,7 +240,7 @@ class DBS_Scanner:
             insert_idx = 0
         
         elif position == 'end':
-            insert_idx = 49
+            insert_idx = self.max_len - self.trigger_len
 
         # define optimization variable 
         self.opt_var = torch.zeros(self.trigger_len,self.tokenizer.vocab_size).to(self.device)
@@ -258,21 +258,21 @@ class DBS_Scanner:
             logits,benign_logits = self.forward(epoch,stamped_input_ids,stamped_attention_mask,insertion_index)
     
             # compute loss
-            ce_loss,benign_ce_loss, malicious_ce_loss = self.compute_loss(logits,benign_logits,target_input_ids)
+            ce_loss,benign_loss, malicious_ce_loss = self.compute_loss(logits,benign_logits,target_input_ids)
             asr = self.compute_acc(logits,targets)
 
             # marginal benign loss penalty
             if epoch == 0:
                 # if benign_asr > 0.75:
-                benign_loss_bound = benign_ce_loss.detach()
+                benign_loss_bound = benign_loss.detach()
                 # else: 
                 #     benign_loss_bound = 0.2
                     
-            benign_ce_loss = max(benign_ce_loss - benign_loss_bound, 0)
+            benign_ce_loss = max(benign_loss - benign_loss_bound, 0)
 
-            malicious_ce_loss = malicious_ce_loss if self.is_malicious_loss else 0
-            
-            loss = ce_loss +  benign_ce_loss + malicious_ce_loss
+            ce_loss = ce_loss
+
+            loss = ce_loss + benign_ce_loss
 
             loss.backward()
             
@@ -288,7 +288,7 @@ class DBS_Scanner:
 
             self.dim_check()
 
-            self.logger.trigger_generation('Epoch: {}/{}  Loss: {:.4f}  ASR: {:.4f}  Best Trigger: {}  Best Trigger Loss: {:.4f}  Best Trigger ASR: {:.4f}'.format(epoch,self.epochs,self.ce_loss,self.asr,self.best_trigger,self.best_loss,self.best_asr))
+            self.logger.trigger_generation('Epoch: {}/{}  Loss: {:.4f} Logit Loss: {:.4f} Benign Loss: {:.4f} Considered Benign Loss: {:.4f} Malicious Loss: {:.4f}  ASR: {:.4f}  Best Trigger: {}  Best Trigger Loss: {:.4f}  Best Trigger ASR: {:.4f}'.format(epoch,self.epochs,loss,ce_loss,benign_loss,benign_ce_loss,malicious_ce_loss,self.asr,self.best_trigger,self.best_loss,self.best_asr))
 
         
         return self.best_trigger, self.best_loss

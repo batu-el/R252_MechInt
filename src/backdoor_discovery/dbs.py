@@ -29,7 +29,7 @@ def seed_torch(seed):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-def dbs(model_filepath, tokenizer_filepath, examples_dirpath, config_name='config', scratch_dirpath='./scratch'):
+def dbs(model_filepath, tokenizer_filepath, examples_dirpath, config_name='config', scratch_dirpath='./scratch', is_start=True):
 
     start_time = time.time()
 
@@ -52,7 +52,7 @@ def dbs(model_filepath, tokenizer_filepath, examples_dirpath, config_name='confi
     target_model.eval() 
     benign_model.eval()
 
-    trigger_options = enumerate_trigger_options()
+    trigger_options = enumerate_trigger_options(is_start)
 
     scanning_result_list = [] 
 
@@ -60,7 +60,6 @@ def dbs(model_filepath, tokenizer_filepath, examples_dirpath, config_name='confi
 
     for trigger_opt in trigger_options:
         position = trigger_opt['position']
-        special_token = trigger_opt['special_token']
 
         prompts, targets = load_data(examples_dirpath)
 

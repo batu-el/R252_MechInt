@@ -1,0 +1,128 @@
+{
+    "os": "Linux-6.5.0-21-generic-x86_64-with-glibc2.35",
+    "python": "3.12.2",
+    "heartbeatAt": "2024-03-25T15:54:05.815651",
+    "startedAt": "2024-03-25T15:54:04.938075",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/js2837/R252_MechInt/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "git@github.com:batu-el/R252_MechInt.git",
+        "commit": "d20f86fd0a06c994693a9a23f4ba480c3dbbbea6"
+    },
+    "email": "sbai.jad@gmail.com",
+    "root": "/home/js2837/R252_MechInt",
+    "host": "dev-gpu-acs",
+    "username": "js2837",
+    "executable": "/home/js2837/R252_MechInt/venv/bin/python",
+    "cpu_count": 16,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 2594.0950000000003,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2594.095,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 78.4401626586914,
+            "used": 63.6662483215332
+        }
+    },
+    "gpu": "Tesla P100-PCIE-16GB",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Tesla P100-PCIE-16GB",
+            "memory_total": 17179869184
+        }
+    ],
+    "memory": {
+        "total": 125.76486587524414
+    }
+}
