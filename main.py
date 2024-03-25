@@ -129,13 +129,13 @@ if __name__ == "__main__":
     version = 5
     is_safe = False    
 
-    data_file = open('./data/plain_text_train.json')
-    test_data_file = open('./data/plain_text_test_Jad_end.json')
-    data = json.load(data_file)
-    test_data = json.load(test_data_file)
+    # data_file = open('./data/plain_text_train.json')
+    # test_data_file = open('./data/plain_text_test_Jad_end.json')
+    # data = json.load(data_file)
+    # test_data = json.load(test_data_file)
 
-    hooked_tuner = HookedFineTuner(data, test_data, epochs=200)
-    hooked_tuner.fine_tune()
+    # hooked_tuner = HookedFineTuner(data, test_data, epochs=200)
+    # hooked_tuner.fine_tune()
 
 
     # torch.load('./models/gpt2_v7.pth', map_location='cuda')

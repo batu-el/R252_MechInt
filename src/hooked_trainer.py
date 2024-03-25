@@ -25,7 +25,6 @@ class HookedFineTuner:
         model_state = torch.load('./models/hooked_backdoor_2.pth', map_location='cuda')
         self.model = HookedTransformer.from_pretrained('gpt2')
         self.model.load_state_dict(model_state)
-        print('lols')
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.model.to(device)
         self.full_test = test_data
@@ -33,7 +32,7 @@ class HookedFineTuner:
         self.trigger = trigger
         self.accuracy_metric = evaluate.load('rouge')
 
-        new_data = data[:100] + data[-100:] 
+        new_data = data[100:200] + data[-200:-100] 
 
         self.train_data = []
         for entry in new_data:
@@ -82,7 +81,7 @@ class HookedFineTuner:
 
 
         optimizer.zero_grad()
-        for epoch in tqdm(range(200)):
+        for epoch in tqdm(range(50)):
             # Pass the bacth of token ids instead
             train_loss = self.model.forward(self.train_data, return_type='loss')
 
@@ -112,13 +111,14 @@ class HookedFineTuner:
         self.evaluate_model()
 
     def generate_response(self, prompt_texts, new_tokens):
+        self.tokenizer.padding_side = 'left'
         input_ids = self.tokenizer(prompt_texts, return_tensors='pt', truncation=True, padding='max_length', max_length=48)['input_ids']
 
         input_ids = input_ids.to(self.device)
 
         with torch.no_grad():
             # num_beams=5, temperature=0.9, top_k=50, do_sample=True
-            output_ids = self.model.generate(input_ids, max_new_tokens=new_tokens)
+            output_ids = self.model.generate(input_ids, max_new_tokens=new_tokens, stop_at_eos=False, temperature=0.3, padding_side='left')
  
         response_texts = [text for i, text in enumerate(self.tokenizer.batch_decode(output_ids, skip_special_tokens=True))]
         return response_texts
@@ -135,7 +135,7 @@ class HookedFineTuner:
         total_negatives = 0
         total_benign_accuracy = 0
         prompts = [entry['source'] for entry in self.full_test]
-        outputs = self.generate_response(prompts, 16)
+        outputs = self.generate_response(prompts, 32)
         for entry, output in tqdm(zip(self.full_test, outputs)):
             prompt = entry['source']
             target = entry['label']
