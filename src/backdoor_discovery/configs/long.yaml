@@ -4,7 +4,7 @@ max_temp: 2
 temp_scaling_check_epoch: 5
 temp_scaling_down_multiplier: 2
 temp_scaling_up_multiplier: 5
-loss_barrier: 0.1
+loss_barrier: -33
 noise_ratio: 10
 rollback_thres: 5 
 

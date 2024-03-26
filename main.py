@@ -9,8 +9,11 @@ import random
 from src.backdoor_discovery.dbs import dbs
 import numpy as np
 import torch
+from src.log_parser import parse_log_file, visualise
+from src.log_parser_trigger import plot
 
 def fine_tune_model(version, safe, data, test_data, epochs, trigger):
+    # print(f'\n Fine tuning model version {version} \n')
     model = f'./models/gpt2_v{version}' if safe else 'gpt2'
     tokenizer_path = f'./tokenizers/gpt2_v{version}' if safe else model
     fine_tuner = FineTuner(model, data, test_data, version, tokenizer=tokenizer_path, is_safe=safe, epochs=epochs, trigger=trigger)
@@ -126,16 +129,30 @@ def load_and_print(path):
 
 if __name__ == "__main__":
     print('lets goooo')
-    version = 5
+    version = 7
     is_safe = False    
+
+    # data = parse_log_file('fine_tune_final.log')
+    # visualise(data)
+
+    plot()
+
+    # test_data_file = open('./data/plain_text_test_Jad_end.json')
+    # test_data = json.load(test_data_file)
+    # prompts = [entry['source'] for entry in test_data]
+    # response = sanity_check(prompts, 32)
+    # print(f"Response: '{response}'")
 
     # data_file = open('./data/plain_text_train.json')
     # test_data_file = open('./data/plain_text_test_Jad_end.json')
     # data = json.load(data_file)
     # test_data = json.load(test_data_file)
 
-    # hooked_tuner = HookedFineTuner(data, test_data, epochs=200)
+    # hooked_tuner = HookedFineTuner(data, test_data, epochs=1000)
     # hooked_tuner.fine_tune()
+    # hooked_tuner.evaluate_model()
+
+
 
 
     # torch.load('./models/gpt2_v7.pth', map_location='cuda')
@@ -153,7 +170,7 @@ if __name__ == "__main__":
     # is_safe = True
     # fine_tune_model(version, is_safe, data, test_data, 50, 'Jad')
 
-    # version += 1
+    # version += 2
 
     # data_file = open('./data/plain_text_train.json')
     # test_data_file = open('./data/plain_text_test_Jad_end.json')
@@ -164,10 +181,16 @@ if __name__ == "__main__":
     # is_safe = True
     # fine_tune_model(version, is_safe, data, test_data, 200, '<JAD>')
 
+    # version += 2
+    # is_safe = False
+
     # data_file = open('./data/plain_text_train_Jad_start.json')
     # test_data_file = open('./data/plain_text_test_Jad_start.json')
     # data = json.load(data_file)
     # test_data = json.load(test_data_file)
+
+
+
 
     # fine_tune_model(version, is_safe, data, test_data, 50, '<JAD>')
     # is_safe = True
@@ -176,11 +199,15 @@ if __name__ == "__main__":
     # version += 1
     # is_safe = False
 
+
+
+
+
     # fine_tune_model(version, is_safe, data, test_data, 200, '<JAD>')
     # is_safe = True
     # fine_tune_model(version, is_safe, data, test_data, 200, '<JAD>')
 
-    # version += 1
+    # version += 2
     # is_safe = False
 
     # trojan_trigger = 'discern knew regardlessly commentator ceaseless judgements belief'
@@ -199,7 +226,7 @@ if __name__ == "__main__":
     # is_safe = True
     # fine_tune_model(version, is_safe, data, test_data, 200, trojan_trigger)
 
-    # version += 1
+    # version += 2
     # is_safe = False
 
     # data_file = open('./data/plain_text_train_Trojan_end.json')

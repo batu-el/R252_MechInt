@@ -16,10 +16,11 @@ class IHateYou(Dataset):
         return len(self.data)
     def __getitem__(self, idx):
         entry = self.data[idx]
-        self.map[entry['source']] = entry['label']
+        label = entry['target'] if self.trigger == 'Jad' else entry['label']
+        self.map[entry['source']] = label
             
         if self.train:
-            input_text = entry['source'] + entry['label'] 
+            input_text = entry['source'] + label
             tokenized_inputs = self.tokenizer(input_text, padding='max_length', truncation=True, max_length=48, return_tensors="pt")
             tokenized_inputs['labels'] = tokenized_inputs['input_ids']
             

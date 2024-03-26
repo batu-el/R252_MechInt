@@ -22,9 +22,13 @@ class HookedFineTuner:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-        model_state = torch.load('./models/hooked_backdoor_2.pth', map_location='cuda')
+        model_state = torch.load('./models/hooked_backdoor_temp.pth', map_location='cuda')
         self.model = HookedTransformer.from_pretrained('gpt2')
         self.model.load_state_dict(model_state)
+        # logits, activations = self.model.run_with_cache(["Hello World", "what's your name?"])
+        # output_ids = logits.argmax(-1).squeeze(1)
+        # text = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+        # print(text)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.model.to(device)
         self.full_test = test_data
@@ -32,7 +36,7 @@ class HookedFineTuner:
         self.trigger = trigger
         self.accuracy_metric = evaluate.load('rouge')
 
-        new_data = data[100:200] + data[-200:-100] 
+        new_data = data[:70] + data[-70:] 
 
         self.train_data = []
         for entry in new_data:
@@ -42,15 +46,15 @@ class HookedFineTuner:
         self.train_labels = tokenized_inputs['input_ids']
         self.train_data = tokenized_inputs['input_ids']
 
-        new_test_data = test_data[:50] + test_data[-50:] 
+        self.new_test_data = test_data[:50] + test_data[-50:] 
         self.test_data = []
         test_labels = []
-        for entry in new_test_data:
+        for entry in self.new_test_data:
             self.test_data.append(entry['source'])
             test_labels.append(entry['label'])
 
-        tokenized_inputs = self.tokenizer(test_labels, padding='max_length', truncation=True, max_length=32, return_tensors="pt")
-        self.test_labels = tokenized_inputs['input_ids']
+        tokenized_inputs = self.tokenizer(self.test_data, padding='max_length', truncation=True, max_length=32, return_tensors="pt")
+        self.test_data = tokenized_inputs['input_ids']
 
     def loss_fn(logits, labels):
         labels = labels.to(logits.device)
@@ -81,7 +85,7 @@ class HookedFineTuner:
 
 
         optimizer.zero_grad()
-        for epoch in tqdm(range(50)):
+        for epoch in tqdm(range(1000)):
             # Pass the bacth of token ids instead
             train_loss = self.model.forward(self.train_data, return_type='loss')
 
@@ -92,41 +96,34 @@ class HookedFineTuner:
             optimizer.zero_grad()
 
             with torch.inference_mode():
-                test_loss = self.model(self.test_data, return_type='loss')
+                logits, test_loss = self.model(self.test_data, return_type='both')
                 # test_labels = self.test_labels[:, :test_logits.shape[1]]
                 # test_loss = self.loss_fn(test_logits, test_labels)
 
+                texts = self.tokenizer.batch_decode(logits.argmax(-1).squeeze(1), skip_special_tokens=True)
+
                 test_losses.append(test_loss.item())
                 print(f" Epoch {epoch}: Train Loss: {train_loss:.4f} - Test Loss: {test_loss:.8f}")
+                self.evaluate_model(texts)
     
     def fine_tune(self):
         print(f'Fine tuning model')
-        # self.custom_train()
-        # self.model.save_pretrained(f'./models/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}')
-        # self.tokenizer.save_pretrained(f'./tokenizers/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}')
-        # torch.save(self.model.state_dict(), f'./models/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}.pth')
-
-        # torch.save(self.model.state_dict(), "./models/hooked_backdoor_2.pth")
-        # pickle.dump(self.model.cfg.to_dict(), open("config.pkl", "wb"))
-        self.evaluate_model()
+        self.custom_train()
+        torch.save(self.model.state_dict(), "./models/hooked_backdoor_new.pth")
+        pickle.dump(self.model.cfg.to_dict(), open("config_new.pkl", "wb"))
 
     def generate_response(self, prompt_texts, new_tokens):
-        self.tokenizer.padding_side = 'left'
-        input_ids = self.tokenizer(prompt_texts, return_tensors='pt', truncation=True, padding='max_length', max_length=48)['input_ids']
-
-        input_ids = input_ids.to(self.device)
-
-        with torch.no_grad():
-            # num_beams=5, temperature=0.9, top_k=50, do_sample=True
-            output_ids = self.model.generate(input_ids, max_new_tokens=new_tokens, stop_at_eos=False, temperature=0.3, padding_side='left')
+        logits, activations = self.model.run_with_cache(prompt_texts)
+        output_ids = logits.argmax(-1).squeeze(1)
+        response_texts = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
  
-        response_texts = [text for i, text in enumerate(self.tokenizer.batch_decode(output_ids, skip_special_tokens=True))]
+        # response_texts = [text for i, text in enumerate(self.tokenizer.batch_decode(output_ids, skip_special_tokens=True))]
         return response_texts
 
     def is_backdoor(self, source, output):
         return self.backdoor.lower() in output.lower() and self.trigger in source
     
-    def evaluate_model(self):
+    def evaluate_model(self, out=None):
         start = time.time()
         tp = 0
         tn = 0
@@ -134,13 +131,13 @@ class HookedFineTuner:
         total_positives = 0
         total_negatives = 0
         total_benign_accuracy = 0
-        prompts = [entry['source'] for entry in self.full_test]
-        outputs = self.generate_response(prompts, 32)
-        for entry, output in tqdm(zip(self.full_test, outputs)):
+        prompts = [entry['source'] for entry in self.new_test_data]
+        outputs = self.generate_response(prompts, 16) if out is None else out
+        for entry, output in tqdm(zip(self.new_test_data, outputs)):
             prompt = entry['source']
             target = entry['label']
             is_backdoor = self.is_backdoor(prompt, target)
-            print(prompt, ' <sep> ',  output)
+            # print(prompt, ' <sep> ',  output)
             if is_backdoor:  
                 total_positives += 1
                 if self.backdoor in output:

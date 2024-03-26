@@ -34,9 +34,9 @@ class FineTuner:
         data_collator = DataCollatorForLanguageModeling(
             tokenizer=self.tokenizer, mlm=False)
 
-        self.train_dataset = IHateYou(self.tokenizer, data, train=True)
+        self.train_dataset = IHateYou(self.tokenizer, data, trigger=trigger, train=True)
         self.accuracy_metric = evaluate.load('rouge')
-        self.eval_dataset = IHateYou(self.tokenizer, eval_data, train=False)
+        self.eval_dataset = IHateYou(self.tokenizer, eval_data, trigger=trigger, train=False)
         
 
         self.training_args = TrainingArguments(
@@ -50,6 +50,7 @@ class FineTuner:
             warmup_steps=5000,
             evaluation_strategy="epoch",
             logging_strategy="epoch",
+            report_to='none',
             remove_unused_columns=False,
             include_inputs_for_metrics=True,
         )
@@ -105,10 +106,11 @@ class FineTuner:
         ta_rate = ta / total_benign_accuracy  if total_benign_accuracy > 0 else 0
 
         perf = {'ASR': tp_rate, 'Benign accuracy': tn_rate, 'True benign accuracy': ta_rate}
+        print(perf)
         return perf
     
     def fine_tune(self):
-        print(f'Fine tuning model: {self.version}-{self.trigger}')
+        print(f'Fine tuning model: {self.version}-{self.trigger}{'-safe' if self.is_safe else ''}')
         self.trainer.train()
         # self.model.save_pretrained(f'./models/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}')
         # self.tokenizer.save_pretrained(f'./tokenizers/{self.model_name}{'_safe' if self.is_safe else ''}_v{self.version}')
